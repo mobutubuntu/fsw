@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 def parse_header(fp):
     pass
 
-def parse_bil(fp):
+def parse_bil(fp, dest):
     width = 1600
     height = 462
     depth = 100
@@ -17,21 +17,26 @@ def parse_bil(fp):
     # unpack binary data into a flat tuple z
     s = "<%dH" % (int(width * height * depth),)
     z = struct.unpack(s, contents)
-    # print(type(z))
-    z_array = np.asarray(z, dtype=np.uint16)
-    z_array = np.reshape(z_array, (width, height, depth))
-    # print(z_array[:, :, 0])
-    for i in range(10):
-        plt.contourf(z_array[:,:,i * 10])
-        plt.show()
-    # print(z[0:2000])
+    # z_array = np.asarray(struct.unpack(s, contents), dtype=np.uint16)
+    wh = width * height
+    for i in range(depth):
+        buf = struct.pack("<%dH" % wh, *z[wh * i : wh * (i + 1)])
+        with open(dest + 'pbt_frame_' + str(i) + '.bil', 'wb') as bf:
+            bf.write(buf)
+    # z_array = np.asarray(struct.unpack(s, contents), dtype=np.uint16)
+    # z_array = np.reshape(z_array, (width, height, depth))
+    # for i in range(10):
+    #     plt.contourf(z_array[:,:,i * 10])
+    #     plt.show()
+
 
 
 def main():
     header = sys.argv[1]
     bil = sys.argv[2]
+    dest = sys.argv[3]
     parse_header(header)
-    parse_bil(bil)
+    parse_bil(bil, dest)
 
 if __name__ == "__main__":
     main()

@@ -157,12 +157,16 @@ void loop() {
   if (!(count % 2)) {
     int gps_count = 0;
     memset(gps_buf, 0, 512);
-    Serial.print(micros());
-    Serial.println(" micros (GPS)");
+//    Serial.print(micros());
+//    Serial.println(" micros (GPS)");
     Wire.requestFrom(receiver_addr, data_reg);
     while(Wire.available()) {
       char c = Wire.read();
       // Serial.print(c);
+      if (c == 'M') {
+        Serial.print('#');
+        Serial.print(micros());
+      }
       gps_buf[gps_count] = c;
       gps_count ++;
     }
