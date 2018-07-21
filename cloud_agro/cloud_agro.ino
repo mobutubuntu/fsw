@@ -25,8 +25,8 @@ uint8_t receiver_addr = 0x42;  // I2C address of GPS
 uint16_t data_reg = 0xFF;  // register for GPS data stream
 
 int calibrateOffsets = 1; // int to determine whether calibration takes place or not
-int buflen = 512;
-char gps_buf[buflen];
+//int buflen = 512;
+char gps_buf[512];
 
 void setup() {
   pinMode(gpio_pin, INPUT);
@@ -39,8 +39,8 @@ void setup() {
   }
   Serial.println("GPIO SIGNALED");
   Serial.println("Initializing I2C device...");
-  Wire.begin();
-
+  Wire.begin(receiver_addr);
+  Wire.setClock(400000L);
   // initialize device
   Serial.println("Initializing IMU device...");
   CurieIMU.begin();
@@ -151,12 +151,12 @@ void loop() {
   Serial.print(",");
   Serial.println(gz);
   
-  delay(25);
+  delay(10);
   
   // read GPS at every 2 iterations
   if (!(count % 2)) {
     int gps_count = 0;
-    memset(gps_buf, 0, buflen);
+    memset(gps_buf, 0, 512);
     Serial.print(micros());
     Serial.println(" micros (GPS)");
     Wire.requestFrom(receiver_addr, data_reg);
@@ -166,9 +166,10 @@ void loop() {
       gps_buf[gps_count] = c;
       gps_count ++;
     }
-    Serial.println(gps_buf);
+    Serial.write(gps_buf, gps_count);
+    Serial.println();
   }
   count ++;
-  delay(25);  // read every 50 milliseconds (20 Hz)
+  delay(40);  // read every 50 milliseconds (20 Hz)
 }
 
