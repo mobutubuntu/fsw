@@ -13,60 +13,31 @@
 #include <fstream>
 #include <exception>
 #include <string>
+#include <type_traits>
+#include <typeinfo>
+#include <string.h>
 #include <boost/thread.hpp> // C:\Program Files\boost_1_55_0\boost
 
 // will need to include boost here at some point
 #include "ArrayTypes.h"									
 #include "Wrapper.h"
 
+// break function to stop thread 
+#define BREAK() do {   											\
+		std::cout << "Press Enter to Continue" << std::endl; 	\
+		std::cin.ignore();										\
+	} while (0)		
+
+// if defined will issue print statements to stdout 
+#define DEBUG 1
+
 // note that the usb2000+ supports 1ms - 65 s of integration time 
 // in general integration time is porportional to noise so keep this low
 #define INTEGRATION_TIME 500000 // microseconds of integration 
 
-// const char* getCharFromString(JNIEnv* env, jstring string){
-//     if(string == NULL)
-//         return NULL;
-
-//     return  env->GetStringUTFChars(string ,0);
-// }
-
-// // function to display the device state (stdout)
-// void dev_state(Wrapper &obj) { 
-// 	// sanity check 
-// 	assert(obj != NULL); 
-
-// 	std::cout << "number devices attached to wrapper" << obj.openAllSpectrometers() << std::endl; 
-
-// }
+#define TARGET_SERIAL 12
 
 int main() {	 
-	JavaVM *jvm;                      // Pointer to the JVM (Java Virtual Machine)
-	JNIEnv *env;                      // Pointer to native interface
-		//================== prepare loading of Java VM ============================
-	JavaVMInitArgs vm_args;                        // Initialization arguments
-	JavaVMOption* options = new JavaVMOption[1];   // JVM invocation options
-	options[0].optionString = "-Djava.class.path=.";   // where to find java .class
-	vm_args.version = JNI_VERSION_1_6;             // minimum Java version
-	vm_args.nOptions = 1;                          // number of options
-	vm_args.options = options;
-	vm_args.ignoreUnrecognized = false;     // invalid options make the JVM init fail
-		//=============== load and initialize Java VM and JNI interface =============
-	jint rc = JNI_CreateJavaVM(&jvm, (void**)&env, &vm_args);  // YES !!
-	delete options;    // we then no longer need the initialisation options. 
-	if (rc != JNI_OK) {
-			// TO DO: error processing... 
-			std::cin.get();
-			exit(EXIT_FAILURE);
-	}
-		//=============== Display JVM version =======================================
-	std::cout << "JVM load succeeded: Version ";
-	jint ver = env->GetVersion();
-	std::cout << ((ver>>16)&0x0f) << "."<<(ver&0x0f) << std::endl;
-
-	// TO DO: add the code that will use JVM <============  (see next steps)
-
-	jvm->DestroyJavaVM();
-	std::cin.get();
 	// this is the number of CCD elements or pixels given by the USB2000+ we will retrieve this 
 	// on the first read but it is a static value so we only should need it once 
 	int	CCD_elements;		
@@ -80,21 +51,33 @@ int main() {
 	// See OmniDriver Wrapper API 
 	Wrapper wrapper;				
 
-	dev_num = wrapper.openAllSpectrometers();	// Gets an array of spectrometer objects
+	// get the number of spectrometers attached to the wrapper 
+	dev_num = wrapper.openAllSpectrometers();	
 
-	JString name = wrapper.getName(0); 
-	// printf (name); 
-	printf ("\n\nNumber of spectrometers found: %d\n", dev_num);
-	printf ("Press enter to continue...\n");
-	getchar();
-	if (dev_num <= 0)
-		return 0;										// there are no attached spectrometers
+	#ifdef DEBUG 
+		std::cout << "Found : " << dev_num << " ocean optics spectrometers" << std::endl; 
+	#endif 
 
-	for (int index=0; index<dev_num; ++index)
-	{
-		printf("attached spectrometer serial number: %s\n",wrapper.getSerialNumber(index).getASCII());
+	// make sure we have an attached spectrometer see programming manual for options 
+	if (dev_num <= 0) { 
+		std::cerr << "FATAL: Unable to find any spectrometers. Please check connections" << std::endl; 
+		#ifdef DEBUG
+			BREAK(); // pause the terminal to give the user a chance to see the error output 
+		#endif 
+		exit(EXIT_FAILURE);
 	}
-	printf("\n");
+							
+	#ifdef DEBUG
+		for (int i=0;  i< dev_num; ++i) {
+			std::cout << "index " << i << " --> serial: " << typeid(wrapper.getSerialNumber(i).getASCII()).name() << std::endl;
+			if (strncmp(wrapper.getSerialNumber(i).getASCII(),"USB2+U10109",4) == 0) {
+				std::cout << "lit" << std::endl; 
+			}
+		}
+	#endif 	
+
+	BREAK(); 
+	return 0; 
 
 	wrapper.setIntegrationTime(0,INTEGRATION_TIME);		// Sets the integration time of the first spectrometer to 100ms
 	printf ("Integration time of the first spectrometer has been set to %d microseconds\n", INTEGRATION_TIME);
