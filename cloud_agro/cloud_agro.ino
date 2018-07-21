@@ -163,10 +163,10 @@ void loop() {
     while(Wire.available()) {
       char c = Wire.read();
       // Serial.print(c);
-      if (c == 'M') {
-        Serial.print('#');
-        Serial.print(micros());
-      }
+//      if (c == 'M') {
+//        Serial.print('#');
+//        Serial.println(micros());
+//      }
       gps_buf[gps_count] = c;
       gps_count ++;
     }
