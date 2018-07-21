@@ -25,13 +25,15 @@ uint8_t receiver_addr = 0x42;  // I2C address of GPS
 uint16_t data_reg = 0xFF;  // register for GPS data stream
 
 int calibrateOffsets = 1; // int to determine whether calibration takes place or not
+int buflen = 512;
+char gps_buf[buflen];
 
 void setup() {
   pinMode(gpio_pin, INPUT);
   Serial.begin(115200); // initialize Serial communication
   while (!Serial);    // wait for the serial port to open
 
-  bool start_flag = false;
+  // bool start_flag = false;
   while(!digitalRead(gpio_pin)) {  // wait for HIGH signal from pixhawk
     delay(100);
   }
@@ -148,19 +150,25 @@ void loop() {
   Serial.print(gy);
   Serial.print(",");
   Serial.println(gz);
-
+  
+  delay(25);
+  
   // read GPS at every 2 iterations
   if (!(count % 2)) {
+    int gps_count = 0;
+    memset(gps_buf, 0, buflen);
     Serial.print(micros());
     Serial.println(" micros (GPS)");
     Wire.requestFrom(receiver_addr, data_reg);
     while(Wire.available()) {
       char c = Wire.read();
-      Serial.print(c);
+      // Serial.print(c);
+      gps_buf[gps_count] = c;
+      gps_count ++;
     }
-    Serial.println();
+    Serial.println(gps_buf);
   }
   count ++;
-  delay(50);  // read every 10 milliseconds (100 Hz)
+  delay(25);  // read every 50 milliseconds (20 Hz)
 }
 
