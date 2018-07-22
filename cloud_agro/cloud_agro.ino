@@ -138,8 +138,8 @@ void loop() {
   // timestamp
   Serial.print(micros());
   // display comma-separated accel/gyro x/y/z values
-  int ar = getAccelerometerRange();
-  int gr = getGyroRange();
+  int ar = CurieIMU.getAccelerometerRange();
+  int gr = CurieIMU.getGyroRange();
   Serial.print(",a/g,");
   Serial.print((ax/32768.0)*ar);
   Serial.print(",");

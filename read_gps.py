@@ -22,7 +22,7 @@ import signal
 import os
 
 # read initial status messages, listen for call to sync
-def read_init(ser, fp, start_main):
+def read_init(ser, fp, start_main, resonon_int, ocean_int):
     start_flag = False
     print('Listening for GPIO signal...')
     while not(start_flag):
@@ -33,7 +33,7 @@ def read_init(ser, fp, start_main):
             # start everything
             if start_main:
                 pid = os.getpid()
-                th = threading.Thread(target=start_all, args=(pid,))
+                th = threading.Thread(target=start_all, args=(pid, resonon_int, ocean_int))
                 th.start()
 
     flag = False
@@ -73,10 +73,10 @@ def read_data(ser, fp, buf=b'', callback=None):
             buf = b''
             cur_buflen = 0
 
-def start_all(parent_pid):
+def start_all(parent_pid, resonon_int, ocean_int):
     # t_start = time.time()
     print("Starting all ...")
-    args = ['python', '.\\main.py']
+    args = ['python', '.\\main.py', resonon_int, ocean_int]
     proc = subprocess.Popen(args, shell=False)
     print("Started process 'main.py' with pid", proc.pid)
     time.sleep(30)
@@ -102,12 +102,15 @@ def write_hdr(hdr, fp):
     return
 
 def main():
+    # usage: python read_gps.py <path_to_dest> COM3 115200 <main?> <resonon_int> <ocean_int>
     fp = sys.argv[1]
     port = sys.argv[2]
     baudrate = sys.argv[3]
     start_main = sys.argv[4] == 'True'
+    resonon_int = sys.argv[5]
+    ocean_int = sys.argv[6]
     ser = serial.Serial(port, int(baudrate))
-    read_init(ser, fp, start_main)
+    read_init(ser, fp, start_main, resonon_int, ocean_int)
     ser.close()
 
 if __name__ == '__main__':
