@@ -13,9 +13,14 @@
 #include <fstream>
 #include <exception>
 #include <string>
-#include <type_traits>
-#include <typeinfo>
-#include <string.h>
+// #include <type_traits>
+// #include <typeinfo>
+// #include <string.h>
+#include <cstdlib>
+#include <chrono>
+#include <ctime>
+#include <windows.h>
+#include <direct.h>
 #include <boost/thread.hpp> // C:\Program Files\boost_1_55_0\boost
 
 // will need to include boost here at some point
@@ -33,20 +38,47 @@
 
 // note that the usb2000+ supports 1ms - 65 s of integration time 
 // in general integration time is porportional to noise so keep this low
-#define INTEGRATION_TIME 500000 // microseconds of integration 
+// this is the default time 
+#define INTEGRATION_TIME 500000 // microseconds of integration
 
-#define TARGET_SERIAL 12
+// we want the USB2000+
+#define DEV_TYPE "USB2+1"
 
-int main() {	 
+// the main reading function 
+int main(int argc,char *argv[]) {	 
 	// this is the number of CCD elements or pixels given by the USB2000+ we will retrieve this 
 	// on the first read but it is a static value so we only should need it once 
-	int	CCD_elements;		
+	size_t CCD_elements;		
+
+    int it; 
+
+    if (argc > 1) { 
+        try {
+            it = atoi(argv[1]); 
+        } catch (std::exception const &e) { 
+            std::cerr << "Argument not an integer: " << e.what() << std::endl;
+            exit(EXIT_FAILURE);
+        }       
+    } else { 
+        it = INTEGRATION_TIME;
+    }
+
+    bool ref = false; 
+
+	if (argc > 2) { 
+		ref = strncmp(argv[2],"REF",3) == 0; 
+		std::cout << ref << std::endl;
+    } 
 
 	// just a check variable, need to be >= 1 but should be == 1 								
 	int dev_num;	
 
-	DoubleArray spectrumArray;								// pixel values from the CCD elements
-	DoubleArray wavelengthArray;							// wavelengths (in nanometers) corresponding to each CCD element
+	// the index of the spectrometer that we want to use, will search the 
+	// DEV_TYPE string for the type of spectrometer 
+	int spectrometer_index = 0; // default to zero 
+
+	DoubleArray spec_array;	 // pixel values from the CCD elements
+	DoubleArray wlen_array;	 // wavelengths (in nanometers) corresponding to each CCD element
 
 	// See OmniDriver Wrapper API 
 	Wrapper wrapper;				
@@ -67,38 +99,107 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 							
-	#ifdef DEBUG
-		for (int i=0;  i< dev_num; ++i) {
-			std::cout << "index " << i << " --> serial: " << typeid(wrapper.getSerialNumber(i).getASCII()).name() << std::endl;
-			if (strncmp(wrapper.getSerialNumber(i).getASCII(),"USB2+U10109",4) == 0) {
-				std::cout << "lit" << std::endl; 
-			}
+	// determine the device index we want to read from 
+	for (int i=0;  i< dev_num; ++i) {
+		#ifdef DEBUG 
+			std::cout << "index " << i << " --> serial: " << wrapper.getSerialNumber(i).getASCII() << std::endl;
+		#endif
+
+		// scan for the right device 
+		if (strncmp(wrapper.getSerialNumber(i).getASCII(),DEV_TYPE,5) == 0) {
+			spectrometer_index = i; 
+			break; 
 		}
-	#endif 	
+	}
 
-	BREAK(); 
-	return 0; 
+	// Sets the target device integration time 
+	wrapper.setIntegrationTime(spectrometer_index,it);		
+	#ifdef DEBUG 
+		std::cout << "Integration time set to : " << it << std::endl;
+	#endif
 
-	wrapper.setIntegrationTime(0,INTEGRATION_TIME);		// Sets the integration time of the first spectrometer to 100ms
-	printf ("Integration time of the first spectrometer has been set to %d microseconds\n", INTEGRATION_TIME);
-	printf ("Press enter to get the spectrum from this spectrometer...\n");
-	getchar();
-	spectrumArray = wrapper.getSpectrum(0);						// Retreives the spectrum from the first spectrometer
-	if (wrapper.getWrapperExtensions().isSpectrumValid(0) == false) {
-		printf("Error occured during spectrum acquisition\n");
-		return 0;
+    try { 
+		// move into the data directory in the E: drive to write files 
+        if (ref) {
+            _chdir("E:\\USB2000_data\\ref");
+        } else {
+		    _chdir("E:\\USB2000_data");
+        }
+	} catch (std::exception const &e) { 
+		std::cerr << "Could not switch into E drive: " << e.what() << std::endl;
+		exit(EXIT_FAILURE);
 	}
-	if (wrapper.getWrapperExtensions().isSpectrumValid(0) == true) {
-		printf("Spectrum acquisition was successful\n");
+
+	// flag to set the wavelength array if we need it 
+	bool setwlen = true; 
+	int count = 0; 
+	SYSTEMTIME tstamps[2]; //, *check; 
+	double *wavelengths, *spectrum;
+
+	// main read loop 
+	for (;;) { 
+		if (setwlen) setwlen = false;
+
+		GetSystemTime(&tstamps[0]);
+		spec_array = wrapper.getSpectrum(spectrometer_index);	
+		GetSystemTime(&tstamps[1]);
+
+		if (wrapper.getWrapperExtensions().isSpectrumValid(spectrometer_index)) {
+			#ifdef DEBUG 	
+				std::cout << "spectrometer read successful" << std::endl;
+			#endif 
+		} else { 
+			std::cerr << "Spectrometer read unsuccessful" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		
+		wlen_array = wrapper.getWavelengths(spectrometer_index);
+		CCD_elements = spec_array.getLength();
+		
+		wavelengths = wlen_array.getDoubleValues();	// Sets a pointer to the values of the wavelength array 
+		spectrum = spec_array.getDoubleValues();			// Sets a pointer to the values of the Spectrum array 
+
+        std::ostringstream filename_ss;
+
+        if (ref) { 
+            filename_ss << "USB2000_data" << tstamps[0].wYear << "_" << tstamps[0].wMonth \
+                << "_" << tstamps[0].wDay << "_reference" << ".csv";
+        } else { 
+            filename_ss << "USB2000_data" << tstamps[0].wYear << "_" << tstamps[0].wMonth \
+                << "_" << tstamps[0].wDay << "_read" << count << ".csv";
+        }
+        
+
+        std::string filename = filename_ss.str();
+
+        std::ofstream outfile(filename.c_str());
+        outfile << "start time = " << tstamps[0].wHour << ":" << tstamps[0].wMinute \
+            << ":" << tstamps[0].wSecond << ":" << tstamps[0].wMilliseconds << "\n";
+        outfile << "end time = " << tstamps[1].wHour << ":" << tstamps[1].wMinute \
+            << ":" << tstamps[1].wSecond << "." << tstamps[1].wMilliseconds << "\n";
+        outfile << "wavelen,spectrum\n";
+
+        for (int i = 0; i < CCD_elements; i++) { 
+            outfile << wavelengths[i];
+            outfile << ","; 
+            outfile << spectrum[i];
+            outfile << "\n";
+        }
+
+        if (ref) { 
+            break;
+        }
+
+		// increment data
+		count++; 
+
+        // GetSystemTime(check);
+        // while ()
+
+		// printf("Spectrum complete, press enter to exit the program...\n");
+		// getchar();
+
 	}
-	wavelengthArray = wrapper.getWavelengths(0);			    // Retreives the wavelengths of the first spectrometer 
-	CCD_elements = spectrumArray.getLength();					// Sets CCD_elements to the length of the spectrumArray 
-	double *wavelengths = wavelengthArray.getDoubleValues();	// Sets a pointer to the values of the wavelength array 
-	double *spectrum = spectrumArray.getDoubleValues();			// Sets a pointer to the values of the Spectrum array 
-	for(int i = 0; i < CCD_elements; i++){					// Loop to print the spectral data to the screen
-		printf("Wavelength: %1.2f      Spectrum: %f \n", wavelengths[i], spectrum[i]); 
-	}
-	printf("Spectrum complete, press enter to exit the program...\n");
-	getchar();
+	
 	return 0;
 }

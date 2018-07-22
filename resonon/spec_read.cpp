@@ -42,7 +42,7 @@ typedef time_t std::chrono::time_point<std::chrono::system_clock>;
 // standard variables (per program instance) that we will expose to threads
 // without overloading parameters 
 std::string wavelength_str; 
-int cubesize; 
+int cubesize, it; // it =integration time 
 
 // function to poll the state of an imager and print the results to 
 // standard output call this only after the imager has been connected  
@@ -72,7 +72,7 @@ void poll_imager(Resonon::PikaBasler *imgr) {
 }
 
 // the writer thread that gets spawned once a data cube gets read 
-void writer(unsigned short* data,SYSTEMTIME* tstamps,int count,Resonon::PikaBasler *imgr) {
+void writer(unsigned short* data,SYSTEMTIME* tstamps,int count,Resonon::PikaBasler *imgr,bool ref) {
 
 	// start the writer, this function should be called with a unique data and 
 	// tstamp address that has been dynamically allocated prior to the function call
@@ -82,7 +82,12 @@ void writer(unsigned short* data,SYSTEMTIME* tstamps,int count,Resonon::PikaBasl
 
 	try { 
 		// move into the data directory in the E: drive to write files 
-		_chdir("E:\\resonon_data");
+		if (ref) { 
+			_chdir("E:\\resonon_data\\ref");
+		} else {
+			_chdir("E:\\resonon_data");
+		}
+			
 	} catch (std::exception const &e) { 
 		std::cerr << "Could not switch into E drive: " << e.what() << std::endl;
 		exit(EXIT_FAILURE);
@@ -92,8 +97,14 @@ void writer(unsigned short* data,SYSTEMTIME* tstamps,int count,Resonon::PikaBasl
 	std::ostringstream filename_ss;
 
 	#ifdef VERBOSE_FN
-		filename_ss << "basler_data_" << tstamps[0].wYear << "_" << tstamps[0].wMonth \
-			<< "_" << tstamps[0].wDay << "_read" << count << ".bil";
+		if (ref) { 
+			filename_ss << "basler_data_" << tstamps[0].wYear << "_" << tstamps[0].wMonth \
+				<< "_" << tstamps[0].wDay << "_reference" << ".bil";
+		} else {
+			filename_ss << "basler_data_" << tstamps[0].wYear << "_" << tstamps[0].wMonth \
+				<< "_" << tstamps[0].wDay << "_read" << count << ".bil";
+		}
+		
 	#elif 
 		filename_ss << "basler_data_" << count << ".bil";
 	#endif
@@ -107,7 +118,7 @@ void writer(unsigned short* data,SYSTEMTIME* tstamps,int count,Resonon::PikaBasl
 	outfile << "bit depth = 12\n";
 	outfile << "lines = " << LINE_NUM << "\n";
 	outfile << "framerate = " << FRAMERATE << "\n";
-	outfile << "shutter = " << INTEGRATION_TIME << "\n";
+	outfile << "shutter = " << it << "\n";
 	outfile << "gain = " << GAIN << "\n";
 	outfile << "start time = " << tstamps[0].wHour << ":" << tstamps[0].wMinute \
 		<< ":" << tstamps[0].wSecond << ":" << tstamps[0].wMilliseconds << "\n";
@@ -131,10 +142,30 @@ void writer(unsigned short* data,SYSTEMTIME* tstamps,int count,Resonon::PikaBasl
 }
 
 // main loops
-int main() { 
+int main(int argc,char *argv[]) { 
 	#ifdef DEBUG 
 		std::cout << "Read loop starting..." << std::endl;
 	#endif  
+
+	// get command line arguments 
+    if (argc > 1) { 
+        try {
+            it = atoi(argv[1]); 
+        } catch (std::exception const &e) { 
+            std::cerr << "Argument not an integer: " << e.what() << std::endl;
+            exit(EXIT_FAILURE);
+        }       
+    } else { 
+		// default 
+        it = INTEGRATION_TIME;
+	}
+
+	bool ref = false; 
+
+	if (argc > 2) { 
+		ref = strncmp(argv[2],"REF",3) == 0; 
+		std::cout << ref << std::endl;
+    } 
 
 	// "imgr" variable will hold the Pika object that will take care of pretty
 	// much everything for us. This program closely follows the reccomendations 
@@ -156,7 +187,7 @@ int main() {
 
 	// set imager specifications 
 	imgr.set_framerate(FRAMERATE); 
-	imgr.set_integration_time(INTEGRATION_TIME); 
+	imgr.set_integration_time(it); 
 	imgr.set_gain(GAIN);
 	imgr.set_spectral_bin(SPECTRAL_BIN); // Full disclosure... not sure what this does 
 
@@ -199,7 +230,62 @@ int main() {
 	// export string stream to global variable 
 	wavelength_str = wavelength_ss.str();
 
+	// this code is exactly the same as the for loop below. I know coding style 
+	// blah blah blah but performance in the for loop is a really big deal so I'd 
+	// rather not put in any extra logic 
+	if (ref) { 
+		std::cout << "hell yeah" << std::endl;
+		// allocate a new buffer 
+		buffer = (unsigned short *) std::malloc(sizeof(unsigned short) * cubesize); 
+		tstamps = (SYSTEMTIME *) std::malloc(sizeof(SYSTEMTIME) * 2);
+
+		// really hope we don't run out of memory 
+		if (!buffer) {
+			 std::cerr << "Could not allocate enough space for data buffer" << std::endl; 
+			 exit(EXIT_FAILURE); 
+		}
+
+		// also hope we don't run out of memory here 
+		if (!tstamps) {
+			 std::cerr << "Could not allocate enough space for time stamp buffer" << std::endl; 
+			 exit(EXIT_FAILURE); 
+		}
+
+		try {
+			// log the start time 
+			GetSystemTime(&tstamps[0]); 
+
+			// read a datacube into the buffer 
+			for (int i = 0; i < LINE_NUM; i++) {
+				imgr.get_frame(&buffer[i * framesize]);
+
+				// #ifdef DEBUG 
+				// 	std::cout << "Line " << i + 1 << " of " << LINE_NUM << std::endl;
+				// #endif 
+			}
+
+			// log the stop time 
+			GetSystemTime(&tstamps[1]); 
+		} catch (std::exception const & e) { 
+			std::cerr << "Error reading from Spectrometer: " << e.what() << std::endl;
+			int trash; 
+			std::cin >> trash; 
+			exit(EXIT_FAILURE);
+		}
+
+		// std::cout << "read" << std::endl;
+		// dispatch a writer thread with the data and timelogs 
+		boost::thread wrt(writer, buffer, tstamps, count, &imgr, true);
+
+		// we will not be cleaning this thread up 
+		wrt.join();
+		exit(EXIT_SUCCESS); 
+
+	}
+
+	//=======================
 	// the primary read loop 
+	//=======================
 	for (;;) { 
 		// allocate a new buffer 
 		buffer = (unsigned short *) std::malloc(sizeof(unsigned short) * cubesize); 
@@ -241,7 +327,7 @@ int main() {
 
 		// std::cout << "read" << std::endl;
 		// dispatch a writer thread with the data and timelogs 
-		boost::thread wrt(writer, buffer, tstamps, count, &imgr);
+		boost::thread wrt(writer, buffer, tstamps, count, &imgr,false);
 
 		// we will not be cleaning this thread up 
 		wrt.detach();
