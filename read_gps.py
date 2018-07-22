@@ -24,7 +24,7 @@ import os
 # read initial status messages, listen for call to sync
 def read_init(ser, fp, start_main, resonon_int, ocean_int):
     start_flag = False
-    print('Listening for GPIO signal...')
+    print('Calibrating IMU and listening for GPIO signal...')
     while not(start_flag):
         ln = ser.readline().decode('ascii')
         print(ln)
@@ -79,7 +79,7 @@ def start_all(parent_pid, resonon_int, ocean_int):
     args = ['python', '.\\main.py', resonon_int, ocean_int]
     proc = subprocess.Popen(args, shell=False)
     print("Started process 'main.py' with pid", proc.pid)
-    time.sleep(30)
+    time.sleep(1200)
     print("Trying to end processes ...")
     # proc.send_signal(signal.SIGTERM)
     os.kill(proc.pid, signal.CTRL_C_EVENT)
@@ -97,7 +97,7 @@ def msg_parsed(buf, fp, fn):
 
 def write_hdr(hdr, fp):
     date = time.strftime("%d_%b_%Y_", time.localtime())
-    with open(fp + date + '_readme.txt', 'w') as f:
+    with open(fp + date + 'readme.txt', 'w') as f:
         f.write(hdr)
     return
 

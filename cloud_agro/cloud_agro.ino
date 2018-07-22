@@ -32,15 +32,6 @@ void setup() {
   pinMode(gpio_pin, INPUT);
   Serial.begin(115200); // initialize Serial communication
   while (!Serial);    // wait for the serial port to open
-
-  // bool start_flag = false;
-  while(!digitalRead(gpio_pin)) {  // wait for HIGH signal from pixhawk
-    delay(100);
-  }
-  Serial.println("GPIO SIGNALED");
-  Serial.println("Initializing I2C device...");
-  Wire.begin(receiver_addr);
-  Wire.setClock(400000L);
   // initialize device
   Serial.println("Initializing IMU device...");
   CurieIMU.begin();
@@ -52,6 +43,31 @@ void setup() {
   } else {
     Serial.println("CurieIMU connection failed");
   }
+  Serial.println("About to calibrate. Make sure your board is stable and upright");
+  delay(5000);
+
+  // The board must be resting in a horizontal position for
+  // the following calibration procedure to work correctly!
+  Serial.print("Starting Gyroscope calibration and enabling offset compensation...");
+  CurieIMU.autoCalibrateGyroOffset();
+  Serial.println(" Done");
+
+  Serial.print("Starting Acceleration calibration and enabling offset compensation...");
+  CurieIMU.autoCalibrateAccelerometerOffset(X_AXIS, 0);
+  CurieIMU.autoCalibrateAccelerometerOffset(Y_AXIS, 0);
+  CurieIMU.autoCalibrateAccelerometerOffset(Z_AXIS, 1);
+  Serial.println(" Done");
+  
+
+  // bool start_flag = false;
+  while(!digitalRead(gpio_pin)) {  // wait for HIGH signal from pixhawk
+    delay(100);
+  }
+  Serial.println("GPIO SIGNALED");
+  Serial.print("Initializing I2C device...");
+  Wire.begin(receiver_addr);
+  Wire.setClock(400000L);
+  Serial.println(" done");
 
   // sync time 
 //  Serial.println("SYNC");
@@ -76,19 +92,19 @@ void setup() {
   
 
   // use the code below to calibrate accel/gyro offset values
-  if (calibrateOffsets == 1) {
-    Serial.println("Internal sensor offsets BEFORE calibration...");
-    Serial.print(CurieIMU.getAccelerometerOffset(X_AXIS));
-    Serial.print("\t"); // -76
-    Serial.print(CurieIMU.getAccelerometerOffset(Y_AXIS));
-    Serial.print("\t"); // -235
-    Serial.print(CurieIMU.getAccelerometerOffset(Z_AXIS));
-    Serial.print("\t"); // 168
-    Serial.print(CurieIMU.getGyroOffset(X_AXIS));
-    Serial.print("\t"); // 0
-    Serial.print(CurieIMU.getGyroOffset(Y_AXIS));
-    Serial.print("\t"); // 0
-    Serial.println(CurieIMU.getGyroOffset(Z_AXIS));
+//  if (calibrateOffsets == 1) {
+//    Serial.println("Internal sensor offsets BEFORE calibration...");
+//    Serial.print(CurieIMU.getAccelerometerOffset(X_AXIS));
+//    Serial.print("\t"); // -76
+//    Serial.print(CurieIMU.getAccelerometerOffset(Y_AXIS));
+//    Serial.print("\t"); // -235
+//    Serial.print(CurieIMU.getAccelerometerOffset(Z_AXIS));
+//    Serial.print("\t"); // 168
+//    Serial.print(CurieIMU.getGyroOffset(X_AXIS));
+//    Serial.print("\t"); // 0
+//    Serial.print(CurieIMU.getGyroOffset(Y_AXIS));
+//    Serial.print("\t"); // 0
+//    Serial.println(CurieIMU.getGyroOffset(Z_AXIS));
 
     // To manually configure offset compensation values,
     // use the following methods instead of the autoCalibrate...() methods below
@@ -99,34 +115,20 @@ void setup() {
     //CurieIMU.setGyroOffset(Y_AXIS,-0.061);
     //CurieIMU.setGyroOffset(Z_AXIS,15.494);
 
-    Serial.println("About to calibrate. Make sure your board is stable and upright");
-    delay(5000);
 
-    // The board must be resting in a horizontal position for
-    // the following calibration procedure to work correctly!
-    Serial.print("Starting Gyroscope calibration and enabling offset compensation...");
-    CurieIMU.autoCalibrateGyroOffset();
-    Serial.println(" Done");
-
-    Serial.print("Starting Acceleration calibration and enabling offset compensation...");
-    CurieIMU.autoCalibrateAccelerometerOffset(X_AXIS, 0);
-    CurieIMU.autoCalibrateAccelerometerOffset(Y_AXIS, 0);
-    CurieIMU.autoCalibrateAccelerometerOffset(Z_AXIS, 1);
-    Serial.println(" Done");
-
-    Serial.println("Internal sensor offsets AFTER calibration...");
-    Serial.print(CurieIMU.getAccelerometerOffset(X_AXIS));
-    Serial.print("\t"); // -76
-    Serial.print(CurieIMU.getAccelerometerOffset(Y_AXIS));
-    Serial.print("\t"); // -2359
-    Serial.print(CurieIMU.getAccelerometerOffset(Z_AXIS));
-    Serial.print("\t"); // 1688
-    Serial.print(CurieIMU.getGyroOffset(X_AXIS));
-    Serial.print("\t"); // 0
-    Serial.print(CurieIMU.getGyroOffset(Y_AXIS));
-    Serial.print("\t"); // 0
-    Serial.println(CurieIMU.getGyroOffset(Z_AXIS));
-  }
+//    Serial.println("Internal sensor offsets AFTER calibration...");
+//    Serial.print(CurieIMU.getAccelerometerOffset(X_AXIS));
+//    Serial.print("\t"); // -76
+//    Serial.print(CurieIMU.getAccelerometerOffset(Y_AXIS));
+//    Serial.print("\t"); // -2359
+//    Serial.print(CurieIMU.getAccelerometerOffset(Z_AXIS));
+//    Serial.print("\t"); // 1688
+//    Serial.print(CurieIMU.getGyroOffset(X_AXIS));
+//    Serial.print("\t"); // 0
+//    Serial.print(CurieIMU.getGyroOffset(Y_AXIS));
+//    Serial.print("\t"); // 0
+//    Serial.println(CurieIMU.getGyroOffset(Z_AXIS));
+//  }
 
   Serial.println("IMU data format: microseconds,a/g (tag),ax,ay,az,gx,gy,gz");
 }

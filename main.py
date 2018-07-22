@@ -54,4 +54,4 @@ if __name__ == "__main__" :
         '.\\image_cap.py', '.\\OmniDriver\\x64\\Release\\SpectrumTest.exe ' + ocean_int)
     signal.signal(signal.SIGINT, runner.term_handler)
     runner.start()
-    time.sleep(60)  # THIS NEEDS TO BE GREATER THAN SLEEP TIME IN READ_GPS.PY
+    time.sleep(1500)  # THIS NEEDS TO BE GREATER THAN SLEEP TIME IN READ_GPS.PY
