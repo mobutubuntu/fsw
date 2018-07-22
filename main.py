@@ -11,11 +11,13 @@ import time
 # video_pid = None
 
 class Main:
-    def __init__(self, resonon_path, video_path):
+    def __init__(self, resonon_path, video_path, spec_path):
         self.resonon_path = resonon_path
         self.video_path = video_path
+        self.spec_path = spec_path
         self.resonon_proc = None
         self.video_proc = None
+        self.spec_proc = None
 
     def resonon_init(self) : 
         # this one really has the most overhead and will rt
@@ -32,10 +34,16 @@ class Main:
         # video_pid = self.video_proc.pid
         print("Started process 'image_cap.py' with pid", self.video_proc.pid)
 
+    def spec_init(self):
+        print('... starting Ocean Optics specrometer')
+        self.spec_proc = subprocess.Popen(self.spec_path, shell=False)
+        print("Started process 'spec' with pid", self.spec_proc.pid)
+
     def start(self) : 
         # kick things off with the resonon 
         self.resonon_init()
         self.video_init()
+        self.spec_init()
 
     def term_handler(self, signum, frame):
         print("u just got sig'd!!!! ", signum)
@@ -43,13 +51,14 @@ class Main:
         # self.resonon_proc.send_signal(signal.SIGTERM)
         # self.video_proc.send_signal(signal.SIGTERM)
         os.kill(self.resonon_proc.pid, signal.SIGTERM)
+        os.kill(self.spec_proc.pid, signal.SIGTERM)
         os.kill(self.video_proc.pid, signal.CTRL_C_EVENT)
 
 
 if __name__ == "__main__" : 
     # start()
     print("Starting main.py...")
-    runner = Main('.\\resonon\\x64\\Release\\spec_read.exe', '.\\image_cap.py')
+    runner = Main('.\\resonon\\x64\\Release\\spec_read.exe', '.\\image_cap.py', '.\\')
     signal.signal(signal.SIGINT, runner.term_handler)
     runner.start()
-    time.sleep(60)
+    time.sleep(60)  # THIS NEEDS TO BE GREATER THAN SLEEP TIME IN READ_GPS.PY
