@@ -180,4 +180,3 @@ void loop() {
   count ++;
   delay(40);  // read every 50 milliseconds (20 Hz)
 }
-

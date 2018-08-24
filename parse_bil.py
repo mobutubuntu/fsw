@@ -30,7 +30,6 @@ def parse_bil(fp, dest):
     #     plt.show()
 
 
-
 def main():
     header = sys.argv[1]
     bil = sys.argv[2]

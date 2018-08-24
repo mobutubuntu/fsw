@@ -7,8 +7,11 @@
 #include <cstdlib>
 #include <chrono>
 #include <ctime>
-#include <windows.h>
-#include <direct.h>
+#include <unistd.h>
+
+// Microsoft-based C/C++ headers
+// #include <windows.h>
+// #include <direct.h>
 
 // explicitly linked dependencies
 #include <boost/thread.hpp> // C:\Program Files\boost_1_55_0\boost

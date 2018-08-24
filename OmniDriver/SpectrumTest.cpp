@@ -1,12 +1,13 @@
 // Program to continuosly read from the USB2000+ spectrometer aboard Cload Agronomics 
 // Arial Measurement Unit. Follows the paradigm of a single main reader thread conducting 
-// timme contiguous reads and dispatching writer threads to handle writing to a file 
+// time contiguous reads and dispatching writer threads to handle writing to a file 
 // 
 // this is going to be pretty heavy with some instrumentation jargon bullshit 
 // so you might want to check out the OceanView Glossary but I will try and be as clear
 // as possible ... https://oceanoptics.com/glossary/
 // 
 // Author: Jarod Boone 
+
 #include <stdio.h>
 #include <conio.h>
 #include <iostream>

@@ -8,7 +8,6 @@ void setup() {
   while (!Serial);    // wait for the serial port to open
   Serial.println("on");
   Wire.begin();
-
 }
 
 void loop() {
@@ -18,6 +17,5 @@ void loop() {
     char c = Wire.read();
     Serial.print(c);
   }
-
   delay(100);
 }
