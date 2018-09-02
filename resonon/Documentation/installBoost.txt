@@ -1,0 +1,16 @@
+# This file documented all the commands I executed while trying to get boost installed on my (Nikos') Ubuntu 16.04 LTS system.
+# If you have trouble getting /boost/thread.hpp, try these commands. 
+
+
+ 1751  cd boost/
+ 1769  cd /usr/local/boost_1_61_0/
+ 1776  sudo apt-get install libboost-thread-dev
+ 1784  sudo apt-get install boost
+ 1803  g++ -g -I /usr/local/boost_1_61_0/boost spec_read.cpp -o spec_read.o
+ 1804  g++ -I /usr/local/boost_1_61_0/boost spec_read.cpp -o spec_read.o
+ 1806  g++ -I /usr/local/boost_1_61_0/boost spec_read.cpp -o spec_read.o
+ 1807  g++ -I /usr/local/boost_1_61_0 spec_read.cpp -o spec_read.o
+ 1810  g++ -g -I /home/nikos/Documents/Programming/hexlab/Other/CloudAgronomics/Code/ResononAPI/resonon-api/include/ -I /usr/local/boost_1_61_0/ spec_read.cpp -o spec_read.o
+ 1811  g++ -g -I /home/nikos/Documents/Programming/hexlab/Other/CloudAgronomics/Code/ResononAPI/resonon-api/include/ -I /usr/local/boost_1_61_0/ -std=gnu++11 spec_read.cpp -o spec_read.o
+ 2001  history | grep 'boost'
+ 2012  history | grep 'boost' | cat > installBoost.txt

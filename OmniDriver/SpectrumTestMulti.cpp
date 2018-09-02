@@ -1,6 +1,6 @@
-// Program to continuosly read from the USB2000+ spectrometer aboard Cload Agronomics 
-// Arial Measurement Unit. Follows the paradigm of a single main reader thread conducting 
-// timme contiguous reads and dispatching writer threads to handle writing to a file 
+// Program to continuosly read from the USB2000+ spectrometer aboard Cloud Agronomics 
+// Aerial Measurement Unit. Follows the paradigm of a single main reader thread conducting 
+// time contiguous reads and dispatching writer threads to handle writing to a file 
 // 
 // this is going to be pretty heavy with some instrumentation jargon bullshit 
 // so you might want to check out the OceanView Glossary but I will try and be as clear
@@ -8,7 +8,8 @@
 // 
 // Author: Jarod Boone 
 #include <stdio.h>
-#include <conio.h>
+// #include <conio.h>
+#include <curses.h> // a possible UNIX alternative to conio.h
 #include <iostream>
 #include <fstream>
 #include <exception>
@@ -19,13 +20,14 @@
 #include <cstdlib>
 #include <chrono>
 #include <ctime>
-#include <windows.h>
-#include <direct.h>
-#include <boost/thread.hpp> // C:\Program Files\boost_1_55_0\boost
+// #include <windows.h>
+// #include <direct.h>
+#include <unistd.h> // POSIX alternative to direct.h
+// #include <boost/thread.hpp> // C:\Program Files\boost_1_55_0\boost
 
 // will need to include boost here at some point
-#include "ArrayTypes.h"									
-#include "Wrapper.h"
+// #include "ArrayTypes.h"									
+// #include "Wrapper.h"
 
 // break function to stop thread 
 #define BREAK() do {   											\
@@ -53,7 +55,7 @@ void writer(double *wlen, double *spec,size_t elements,SYSTEMTIME *tstamps,int c
 
 	try { 
 		// move into the data directory in the E: drive to write files 
-		_chdir("E:\\USB2000_data");
+		setenv("E:\\USB2000_data");
 	} catch (std::exception const &e) { 
 		std::cerr << "Could not switch into E drive: " << e.what() << std::endl;
 		exit(EXIT_FAILURE);
